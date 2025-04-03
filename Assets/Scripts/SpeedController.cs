@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -5,6 +6,7 @@ public class SpeedController : MonoBehaviour
 {
     public RectTransform arrow;
     public BowlingController bowlingScript;
+    public CanvasGroup noBallCanvasGroup;
 
     public float moveSpeed = 2f;
     public Vector2 posA, posB;
@@ -37,9 +39,38 @@ public class SpeedController : MonoBehaviour
         if (arrowY <= pos1a && arrowY >= pos1b) trajectory = new Vector2(9f, -0.04f);
         else if ((arrowY <= pos2a && arrowY >= pos2b) || (arrowY <= pos2c && arrowY >= pos2d)) trajectory = new Vector2(8f, -0.01f);
         else if ((arrowY <= pos3a && arrowY >= pos3b) || (arrowY <= pos3c && arrowY >= pos3d)) trajectory = new Vector2(7f, 0.01f);
-        else if ((arrowY <= pos4a && arrowY >= pos4b) || (arrowY <= pos4c && arrowY >= pos4d)) trajectory = new Vector2(6f, 0.03f);
+        else if ((arrowY <= pos4a && arrowY >= pos4b) || (arrowY <= pos4c && arrowY >= pos4d))
+        {
+            trajectory = new Vector2(6f, 0.03f);
+            StartCoroutine(NoBall(noBallCanvasGroup));
+        }
 
         bowlingScript.SetSpeedAndBowl(trajectory);
         ballBowled = true;
     }
+
+    IEnumerator NoBall(CanvasGroup canvasGroup)
+    {
+        float duration = 0.5f;
+
+        // Fade in
+        for (float t = 0; t < duration; t += Time.deltaTime)
+        {
+            canvasGroup.alpha = t / duration;
+            yield return null;
+        }
+        canvasGroup.alpha = 1f;
+
+        // Stay visible for 2 seconds
+        yield return new WaitForSeconds(2f);
+
+        // Fade out
+        for (float t = 0; t < duration; t += Time.deltaTime)
+        {
+            canvasGroup.alpha = 1 - (t / duration);
+            yield return null;
+        }
+        canvasGroup.alpha = 0f;
+    }
+
 }
