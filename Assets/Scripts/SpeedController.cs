@@ -33,15 +33,15 @@ public class SpeedController : MonoBehaviour
     public void BowlBall()
     {
         float arrowY = arrow.anchoredPosition.y;
-        Vector2 trajectory = new Vector2(3.5f, -0.01f);
+        Vector3 trajectory = new(3.5f, -0.01f, 0);
         // float speed = 3.5f; // Default to lowest speed
 
-        if (arrowY <= pos1a && arrowY >= pos1b) trajectory = new Vector2(9f, -0.04f);
-        else if ((arrowY <= pos2a && arrowY >= pos2b) || (arrowY <= pos2c && arrowY >= pos2d)) trajectory = new Vector2(8f, -0.01f);
-        else if ((arrowY <= pos3a && arrowY >= pos3b) || (arrowY <= pos3c && arrowY >= pos3d)) trajectory = new Vector2(7f, 0.01f);
+        if (arrowY <= pos1a && arrowY >= pos1b) trajectory = new(BallParameters.Instance.speeds[0], -0.04f, 0);
+        else if ((arrowY <= pos2a && arrowY >= pos2b) || (arrowY <= pos2c && arrowY >= pos2d)) trajectory = new(BallParameters.Instance.speeds[1], -0.01f, 1);
+        else if ((arrowY <= pos3a && arrowY >= pos3b) || (arrowY <= pos3c && arrowY >= pos3d)) trajectory = new(BallParameters.Instance.speeds[2], 0.01f, 2);
         else if ((arrowY <= pos4a && arrowY >= pos4b) || (arrowY <= pos4c && arrowY >= pos4d))
         {
-            trajectory = new Vector2(6f, 0.03f);
+            trajectory = new(BallParameters.Instance.speeds[3], 0.03f, 3);
             StartCoroutine(NoBall(noBallCanvasGroup));
         }
 

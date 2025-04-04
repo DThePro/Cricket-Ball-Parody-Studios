@@ -10,26 +10,33 @@ public class BowlingController : MonoBehaviour
 {
     public enum BowlType { SpinBall, SwingBall }
     public BowlType bowlType;
-    public float spinBallSpeed = 6f, swingForce = 0.5f, spinForce = 0.5f;
+    [HideInInspector]
     public Vector3 dropLocation;
     public GameObject ConfirmCanvas, BowlingCanvas;
     public CinemachineCamera confirmCam, bowlingCam;
     [SerializeField] TextMeshProUGUI bowlTypeText, sideText, swingText;
+    [SerializeField] CanvasGroup outPanel;
 
     private Rigidbody rb;
     private float speed;
     private bool hasHitGround = false;
-    private bool left = false;
+    private bool left = false, onlyOnce = false;
+    private int level;
+    private float spinBallSpeed = 6f, swingForce = 0.5f, spinForce = 0.5f;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        spinBallSpeed = BallParameters.Instance.spinBallSpeed;
+        swingForce = BallParameters.Instance.swingForce;
+        spinForce = BallParameters.Instance.spinForce;
     }
 
-    public void SetSpeedAndBowl(Vector2 trajectory)
+    public void SetSpeedAndBowl(Vector3 trajectory)
     {
         speed = (bowlType == BowlType.SwingBall ? trajectory.x : spinBallSpeed);
         hasHitGround = false;
+        level = (int)trajectory.z;
         BowlBall(trajectory.y);
     }
 
@@ -37,7 +44,7 @@ public class BowlingController : MonoBehaviour
     {
         rb.isKinematic = false;
         Vector3 p0 = transform.position;
-        Vector3 horizontalDiff = new Vector3(dropLocation.x - p0.x, 0f, dropLocation.z - p0.z);
+        Vector3 horizontalDiff = new(dropLocation.x - p0.x, 0f, dropLocation.z - p0.z);
         float d_h = horizontalDiff.magnitude;
         Vector3 horizontalDir = (horizontalDiff.sqrMagnitude > 0.0001f) ? horizontalDiff.normalized : transform.forward;
         float deltaY = dropLocation.y - p0.y;
@@ -56,10 +63,11 @@ public class BowlingController : MonoBehaviour
         float u = (-Bcoef - sqrtDisc) / (2 * Acoef);
         float alpha = Mathf.Atan(u);
         Vector3 launchDir = horizontalDir * Mathf.Cos(alpha) + Vector3.up * Mathf.Sin(alpha);
-        launchDir.Normalize();
 
         if (bowlType == BowlType.SwingBall)
         {
+            float deltaDirection;
+            /*
             float deltaDirection = speed switch
             {
                 9 => 3.45f,
@@ -68,9 +76,12 @@ public class BowlingController : MonoBehaviour
                 6 => 2.45f,
                 _ => 10f
             };
+            */
+            deltaDirection = ((-Mathf.Pow(speed, 3) + 18 * speed * speed - 59 * speed + 215) / 120f) * swingForce / 300;
             Quaternion rotation = Quaternion.AngleAxis(deltaDirection * (left ? -1 : 1), Vector3.up);
             launchDir = rotation * launchDir;
         }
+        launchDir.Normalize();
         rb.linearVelocity = launchDir * v0;
 
         if (bowlType == BowlType.SwingBall)
@@ -82,6 +93,8 @@ public class BowlingController : MonoBehaviour
 
     private IEnumerator ApplySwingForce()
     {
+        float force;
+        /*
         float force = speed switch
         {
             9 => swingForce * 1.7f,
@@ -90,9 +103,16 @@ public class BowlingController : MonoBehaviour
             6 => swingForce * 0.7f,
             _ => swingForce
         };
+        */
+        float a;
+        if (speed <= 7) a = 0.7f + 0.3f * (speed - 6);
+        else if (speed >= 7 && speed <= 8) a = 1 + 0.5f * (speed - 7);
+        else a = 1.5f + 0.2f * (speed - 8);
+        force = swingForce * a;
+        // force = swingForce * ((-Mathf.Pow(speed, 3) * 5 + 111 * speed * speed - 790 * speed + 1866) / 60f);
         while (!hasHitGround)
         {
-            rb.AddForce(Vector3.right * force * Time.deltaTime * (left ? 1 : -1), ForceMode.Force);
+            rb.AddForce((left ? 1 : -1) * force * Time.deltaTime * Vector3.right, ForceMode.Force);
             yield return null;
         }
     }
@@ -104,17 +124,47 @@ public class BowlingController : MonoBehaviour
             hasHitGround = true;
             if (bowlType == BowlType.SpinBall)
             {
-                float force = speed switch
+                float force = level switch
                 {
-                    9 => spinForce * 1.6f,
-                    8 => spinForce * 1.1f,
-                    7 => spinForce * 0.9f,
-                    6 => spinForce * 0.7f,
-                    _ => 0f
+                    0 => spinForce * 1.6f,
+                    1 => spinForce * 1.1f,
+                    2 => spinForce * 0.9f,
+                    3 => spinForce * 0.7f, 
+                    _ => 10f
                 };
-                rb.AddForce(Vector3.right * force * (left ? 1 : -1), ForceMode.Impulse);
+                rb.AddForce((left ? 1 : -1) * force * Vector3.right, ForceMode.Impulse);
             }
         }
+
+        if (collision.gameObject.CompareTag("Wicket") && !onlyOnce)
+        {
+            StartCoroutine(Out());
+            onlyOnce = true;
+        }
+    }
+
+    IEnumerator Out()
+    {
+        float duration = 0.5f;
+
+        // Fade in
+        for (float t = 0; t < duration; t += Time.deltaTime)
+        {
+            outPanel.alpha = t / duration;
+            yield return null;
+        }
+        outPanel.alpha = 1f;
+
+        // Stay visible for 2 seconds
+        yield return new WaitForSeconds(2f);
+
+        // Fade out
+        for (float t = 0; t < duration; t += Time.deltaTime)
+        {
+            outPanel.alpha = 1 - (t / duration);
+            yield return null;
+        }
+        outPanel.alpha = 0f;
     }
 
     public void SwitchBallType()
